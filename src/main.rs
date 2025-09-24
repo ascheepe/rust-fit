@@ -2,8 +2,8 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::str::FromStr;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 #[derive(Debug)]
 struct Config {
@@ -143,15 +143,22 @@ fn make_config() -> io::Result<Config> {
 
     let args: Vec<String> = env::args().collect();
     for arg in args {
-        source_directory = PathBuf::from(arg.strip_prefix("--source-directory=").unwrap_or("."));
-        link_destination = PathBuf::from(arg.strip_prefix("--link-destination=").unwrap_or("."));
-        if let Some(val) = arg.strip_prefix("--bucket_capacity") {
-            bucket_capacity = val
-                .parse::<HumanNumber>()
-                .unwrap_or(HumanNumber::from_str("15M").unwrap()).0;
-        }
-
-        if arg == "--recursive" {
+        if arg.starts_with("--source-directory=") {
+            if let Some(val) = arg.strip_prefix("--source-directory=") {
+                source_directory = PathBuf::from(if !val.is_empty() { val } else { "." });
+            }
+        } else if arg.starts_with("--link-destination=") {
+            if let Some(val) = arg.strip_prefix("--link-destination=") {
+                link_destination = PathBuf::from(if !val.is_empty() { val } else { "." });
+            }
+        } else if arg.starts_with("--bucket-capacity=") {
+            if let Some(val) = arg.strip_prefix("--bucket-capacity=") {
+                bucket_capacity = val
+                    .parse::<HumanNumber>()
+                    .unwrap_or(HumanNumber::from_str("15M").unwrap())
+                    .0;
+            }
+        } else if arg == "--recursive" {
             recursive = true;
         }
     }
