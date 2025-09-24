@@ -5,6 +5,7 @@ use std::io;
 use std::str::FromStr;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 struct Config {
     source_directory: PathBuf,
     link_destination: PathBuf,
@@ -142,20 +143,12 @@ fn make_config() -> io::Result<Config> {
 
     let args: Vec<String> = env::args().collect();
     for arg in args {
-        if arg.starts_with("--source-directory=") {
-            source_directory = PathBuf::from(arg.strip_prefix("--source-directory=").unwrap_or("."));
-        }
-
-        if arg.starts_with("--link-destination=") {
-            link_destination = PathBuf::from(arg.strip_prefix("--link-destination=").unwrap_or("output"));
-        }
-
-        if arg.starts_with("--bucket-capacity=") {
-            bucket_capacity = arg
-                .strip_prefix("--bucket-capacity=")
-                .unwrap()
+        source_directory = PathBuf::from(arg.strip_prefix("--source-directory=").unwrap_or("."));
+        link_destination = PathBuf::from(arg.strip_prefix("--link-destination=").unwrap_or("."));
+        if let Some(val) = arg.strip_prefix("--bucket_capacity") {
+            bucket_capacity = val
                 .parse::<HumanNumber>()
-                .unwrap().0;
+                .unwrap_or(HumanNumber::from_str("15M").unwrap()).0;
         }
 
         if arg == "--recursive" {
@@ -183,6 +176,7 @@ fn numbered_dir_namer(prefix: &str) -> impl FnMut() -> PathBuf {
 fn main() -> io::Result<()> {
     let cfg = make_config()?;
 
+    println!("{:?}", cfg);
     let mut files: Vec<FileInfo> = Vec::new();
     collect_files(
         &cfg.source_directory,
