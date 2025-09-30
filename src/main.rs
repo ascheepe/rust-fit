@@ -137,7 +137,10 @@ fn collect_files(
         }
 
         if meta.is_file() {
-            files.push(FileInfo { path: entry.path(), size: meta.len() });
+            files.push(FileInfo {
+                path: entry.path(),
+                size: meta.len(),
+            });
         }
     }
     Ok(())
@@ -154,19 +157,21 @@ fn make_config() -> io::Result<Config> {
     let args: Vec<String> = env::args().collect();
     for arg in args {
         if arg.starts_with("--source-directory=") {
-            if let Some(val) = arg.strip_prefix("--source-directory=") {
-                source_directory = PathBuf::from(if !val.is_empty() { val } else { "." });
+            if let Some(value) = arg.strip_prefix("--source-directory=") {
+                if !value.is_empty() {
+                    println!("{}", format!("Hey, got some value: {value}"));
+                    source_directory = value.into();
+                }
             }
         } else if arg.starts_with("--link-destination=") {
-            if let Some(val) = arg.strip_prefix("--link-destination=") {
-                link_destination = PathBuf::from(if !val.is_empty() { val } else { "part" });
+            if let Some(value) = arg.strip_prefix("--link-destination=") {
+                if !value.is_empty() {
+                    link_destination = PathBuf::from(value);
+                }
             }
         } else if arg.starts_with("--bucket-capacity=") {
-            if let Some(val) = arg.strip_prefix("--bucket-capacity=") {
-                bucket_capacity = val
-                    .parse::<HumanNumber>()
-                    .unwrap_or(HumanNumber::from_str("15M").unwrap())
-                    .0;
+            if let Some(value) = arg.strip_prefix("--bucket-capacity=") {
+                bucket_capacity = value.parse::<HumanNumber>().unwrap().0;
             }
         } else if arg == "--recursive" {
             recursive = true;
@@ -196,7 +201,7 @@ fn numbered_dir_namer(prefix: &str) -> impl FnMut() -> PathBuf {
     }
 }
 
-fn main() -> Result<(), Box<dyn error::Error>>{
+fn main() -> Result<(), Box<dyn error::Error>> {
     let cfg = make_config()?;
 
     let mut files: Vec<FileInfo> = Vec::new();
@@ -213,7 +218,12 @@ fn main() -> Result<(), Box<dyn error::Error>>{
 
     files.sort_by(|a, b| b.size.cmp(&a.size));
     if files[0].size > cfg.bucket_capacity {
-        return Err(format!("Can never fit {} ({}).", files[0].path.display(), HumanNumber(files[0].size)).into());
+        return Err(format!(
+            "Can never fit {} ({}).",
+            files[0].path.display(),
+            HumanNumber(files[0].size)
+        )
+        .into());
     }
 
     let mut buckets: Vec<Bucket> = Vec::new();
