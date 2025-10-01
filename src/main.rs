@@ -6,7 +6,13 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-#[derive(Debug)]
+fn usage() {
+    println!("usage: fit [--source-directory=dir] [--link-destination=dir]");
+    println!("           [--bucket-capacity=capacity] [--recursive]");
+    println!("           [--dry-run] [--verbose]");
+    std::process::exit(0);
+}
+
 struct Config {
     source_directory: PathBuf,
     link_destination: PathBuf,
@@ -65,17 +71,23 @@ impl<'a> Bucket<'a> {
         false
     }
 
-    fn link(self, verbose: bool) {
+    fn link(self, verbose: bool) -> io::Result<()> {
         for file in self.contents {
             let mut target = self.path.clone();
             target.push(file.path.clone());
             let dir = target.parent().unwrap();
 
+            if let Ok(false) = fs::exists(dir) {
+                fs::create_dir_all(dir).expect(format!("Unable to create {}.", dir.display()).as_ref());
+            }
+
             if verbose {
                 println!("{} -> {}", file.path.display(), target.display());
-                println!("dir={}", dir.display());
             }
+
+            fs::hard_link(&file.path, target)?;
         }
+        Ok(())
     }
 }
 
@@ -159,26 +171,29 @@ fn make_config() -> io::Result<Config> {
         if arg.starts_with("--source-directory=") {
             if let Some(value) = arg.strip_prefix("--source-directory=") {
                 if !value.is_empty() {
-                    println!("{}", format!("Hey, got some value: {value}"));
                     source_directory = value.into();
                 }
             }
         } else if arg.starts_with("--link-destination=") {
             if let Some(value) = arg.strip_prefix("--link-destination=") {
                 if !value.is_empty() {
-                    link_destination = PathBuf::from(value);
+                    link_destination = value.into();
                 }
             }
         } else if arg.starts_with("--bucket-capacity=") {
             if let Some(value) = arg.strip_prefix("--bucket-capacity=") {
                 bucket_capacity = value.parse::<HumanNumber>().unwrap().0;
             }
-        } else if arg == "--recursive" {
-            recursive = true;
-        } else if arg == "--dry-run" {
-            dry_run = true;
-        } else if arg == "--verbose" {
-            verbose = true;
+        } else {
+            if arg == "--recursive" {
+                recursive = true;
+            } else if arg == "--dry-run" {
+                dry_run = true;
+            } else if arg == "--verbose" {
+                verbose = true;
+            } else if arg == "--help" || arg == "-h" {
+                usage();
+            }
         }
     }
 
@@ -252,7 +267,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         if cfg.dry_run {
             println!("{}", bucket);
         } else {
-            bucket.link(cfg.verbose);
+            if let Err(e) = bucket.link(cfg.verbose) {
+                println!("{}", e);
+            }
         }
     }
 
