@@ -29,7 +29,7 @@ struct FileInfo {
 
 impl fmt::Display for FileInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:-8} {}", HumanNumber(self.size), self.path.display())
+        write!(f, "{:-8} {}", HumanSize(self.size), self.path.display())
     }
 }
 
@@ -45,8 +45,8 @@ impl<'a> fmt::Display for Bucket<'a> {
         let header = format!(
             "Bucket \"{}\": {}/{} ({}%).",
             self.path.display(),
-            HumanNumber(self.size),
-            HumanNumber(self.capacity),
+            HumanSize(self.size),
+            HumanSize(self.capacity),
             self.size * 100 / self.capacity,
         );
         writeln!(f, "{}", "-".repeat(header.len()))?;
@@ -91,9 +91,9 @@ impl<'a> Bucket<'a> {
     }
 }
 
-struct HumanNumber(pub u64);
+struct HumanSize(pub u64);
 
-impl FromStr for HumanNumber {
+impl FromStr for HumanSize {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -114,11 +114,11 @@ impl FromStr for HumanNumber {
             _ => return Err(format!("unknown suffix '{}'", suffix)),
         };
 
-        Ok(HumanNumber((value * multiplier) as u64))
+        Ok(HumanSize((value * multiplier) as u64))
     }
 }
 
-impl fmt::Display for HumanNumber {
+impl fmt::Display for HumanSize {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let n = self.0 as f64;
 
@@ -161,7 +161,7 @@ fn collect_files(
 fn make_config() -> io::Result<Config> {
     let mut source_directory: PathBuf = PathBuf::from(".");
     let mut link_destination: PathBuf = PathBuf::from("part");
-    let mut bucket_capacity: u64 = HumanNumber::from_str("15M").unwrap().0;
+    let mut bucket_capacity: u64 = HumanSize::from_str("15M").unwrap().0;
     let mut recursive: bool = false;
     let mut dry_run: bool = false;
     let mut verbose: bool = false;
@@ -182,7 +182,7 @@ fn make_config() -> io::Result<Config> {
             }
         } else if arg.starts_with("--bucket-capacity=") {
             if let Some(value) = arg.strip_prefix("--bucket-capacity=") {
-                bucket_capacity = value.parse::<HumanNumber>().unwrap().0;
+                bucket_capacity = value.parse::<HumanSize>().unwrap().0;
             }
         } else {
             if arg == "--recursive" {
@@ -236,7 +236,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         return Err(format!(
             "Can never fit {} ({}).",
             files[0].path.display(),
-            HumanNumber(files[0].size)
+            HumanSize(files[0].size)
         )
         .into());
     }
