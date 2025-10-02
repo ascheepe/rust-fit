@@ -78,7 +78,7 @@ impl<'a> Bucket<'a> {
             let dir = target.parent().unwrap();
 
             if let Ok(false) = fs::exists(dir) {
-                fs::create_dir_all(dir).expect(format!("Unable to create {}.", dir.display()).as_ref());
+                fs::create_dir_all(dir)?;
             }
 
             if verbose {
