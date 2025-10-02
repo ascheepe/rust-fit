@@ -30,7 +30,7 @@ struct FileInfo {
 
 impl fmt::Display for FileInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:-8} {}", HumanSize(self.size), self.path.display())
+        write!(f, "{:>9}  {}", format!("{}", HumanSize(self.size)), self.path.display())
     }
 }
 
