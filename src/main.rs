@@ -1,4 +1,3 @@
-use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
@@ -6,19 +5,21 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-fn usage() {
-    println!("usage: fit [--source-directory=dir] [--link-destination=dir]");
-    println!("           [--bucket-capacity=capacity] [--recursive]");
-    println!("           [--dry-run] [--verbose]");
-    std::process::exit(0);
-}
+use clap::Parser;
 
+#[derive(Parser, Debug)]
 struct Config {
+    #[arg(short, long, default_value = ".")]
     source_directory: PathBuf,
+    #[arg(short, long, default_value = "part")]
     link_destination: PathBuf,
+    #[arg(short, long, default_value_t = 15_000_000)]
     bucket_capacity: u64,
+    #[arg(short, long, action)]
     recursive: bool,
+    #[arg(short, long, action)]
     dry_run: bool,
+    #[arg(short, long, action)]
     verbose: bool,
 }
 
@@ -158,55 +159,6 @@ fn collect_files(
     Ok(())
 }
 
-fn make_config() -> io::Result<Config> {
-    let mut source_directory: PathBuf = PathBuf::from(".");
-    let mut link_destination: PathBuf = PathBuf::from("part");
-    let mut bucket_capacity: u64 = HumanSize::from_str("15M").unwrap().0;
-    let mut recursive: bool = false;
-    let mut dry_run: bool = false;
-    let mut verbose: bool = false;
-
-    let args: Vec<String> = env::args().collect();
-    for arg in args {
-        if arg.starts_with("--source-directory=") {
-            if let Some(value) = arg.strip_prefix("--source-directory=") {
-                if !value.is_empty() {
-                    source_directory = value.into();
-                }
-            }
-        } else if arg.starts_with("--link-destination=") {
-            if let Some(value) = arg.strip_prefix("--link-destination=") {
-                if !value.is_empty() {
-                    link_destination = value.into();
-                }
-            }
-        } else if arg.starts_with("--bucket-capacity=") {
-            if let Some(value) = arg.strip_prefix("--bucket-capacity=") {
-                bucket_capacity = value.parse::<HumanSize>().unwrap().0;
-            }
-        } else {
-            if arg == "--recursive" {
-                recursive = true;
-            } else if arg == "--dry-run" {
-                dry_run = true;
-            } else if arg == "--verbose" {
-                verbose = true;
-            } else if arg == "--help" || arg == "-h" {
-                usage();
-            }
-        }
-    }
-
-    Ok(Config {
-        source_directory: source_directory,
-        link_destination: link_destination,
-        bucket_capacity: bucket_capacity,
-        recursive: recursive,
-        dry_run: dry_run,
-        verbose: verbose,
-    })
-}
-
 fn numbered_dir_namer(prefix: &str) -> impl FnMut() -> PathBuf {
     let mut count: u64 = 0;
 
@@ -217,7 +169,7 @@ fn numbered_dir_namer(prefix: &str) -> impl FnMut() -> PathBuf {
 }
 
 fn main() -> Result<(), Box<dyn error::Error>> {
-    let cfg = make_config()?;
+    let cfg = Config::parse();
 
     let mut files: Vec<FileInfo> = Vec::new();
     collect_files(
